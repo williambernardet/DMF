@@ -3,7 +3,9 @@ jobs:
 - job: build
   displayName: 'Build'
   pool:
-    vmImage: windows-2019
+    name: 'Azure - SW Build EWDK Agents'
+  workspace:
+    clean: all
   strategy:
     maxParallel: 3
     matrix:
