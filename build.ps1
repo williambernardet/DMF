@@ -78,7 +78,10 @@ function Get-Nuget {
 
 function Request-GitVersion {
     [CmdletBinding()]
-    param()
+    param(
+        [Parameter(ValueFromRemainingArguments)]
+        [string[]] $Arguments = @()
+    )
     # Download GitVersion if needed
     $gitVersionExe = Join-Path $script:CACHE_DIR -ChildPath 'GitVersion.CommandLine/tools/gitversion.exe'
     if (-not (Test-Path $gitVersionExe -PathType Leaf)) {
@@ -87,8 +90,9 @@ function Request-GitVersion {
         $nugetExe = Get-Nuget
         &$nugetExe install GitVersion.CommandLine -ExcludeVersion -OutputDirectory $script:CACHE_DIR
     }
-    Write-Verbose "Executing: ${gitVersionExe} $($arguments -join ' ')"
-    $result = &$gitVersionExe @arguments *>&1
+    
+    Write-Verbose "Executing: ${gitVersionExe} $($Arguments -join ' ')"
+    $result = &$gitVersionExe @Arguments *>&1
     "GitVersion output: ${result}" | Write-Debug
     if ($LASTEXITCODE -ne 0) {
         $result | Write-Host
@@ -137,7 +141,7 @@ function Save-Ewdk {
 function Invoke-Build {
     [CmdletBinding()]
     param()
-    $version = Request-GitVersion
+    $version = Request-GitVersion /nofetch
     $version | Out-String | Write-Host
     Write-Host "##vso[task.updatebuildnumber]$($version.NuGetVersion)"
     $isoFile = Save-Ewdk -TargetOS $TargetOS
