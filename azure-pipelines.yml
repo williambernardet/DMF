@@ -25,8 +25,8 @@ jobs:
     maxParallel: 3
     matrix:
       ${{ each t in parameters.TargetOS }}:
-        ${{ each p in parameters.Platform }}:
-          ${{ each c in parameters.Configuration }}:
+        ${{ each c in parameters.Configuration }}:
+          ${{ each p in parameters.Platform }}:
             ${{t}}_${{c}}_${{p}}:
               TargetOS: ${{t}}
               Platform: ${{p}}

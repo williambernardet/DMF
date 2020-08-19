@@ -10,15 +10,22 @@ param(
     [ValidateSet('Build', 'Pack')]
     [string] $Action = 'Build'
 )
+
+# Global configuration
 $ErrorActionPreference = 'Stop'
 $ProgressPreference = 'SilentlyContinue'
+[Net.ServicePointManager]::SecurityProtocol = "tls12, tls11, tls"
 
 $script:TARGETOS_URL = @{
     '19H1' = 'https://devicesoss.z5.web.core.windows.net/ewdk/EWDK_vb_release_19041_191206-1406.iso'
 }
-
 $script:CACHE_DIR = Join-Path $PSScriptRoot -ChildPath '.cache'
 
+
+#################################################################
+# Helper functions
+#
+#################################################################
 <#
     Execute a command, and update environment modification into
     current powershell process.
@@ -123,6 +130,10 @@ function Save-Ewdk {
 }
 
 
+#################################################################
+# Actions
+#
+#################################################################
 function Invoke-Build {
     [CmdletBinding()]
     param()
@@ -169,4 +180,6 @@ function Invoke-Pack {
     param()
 }
 
+
+# Calling main action
 &"Invoke-${Action}"
