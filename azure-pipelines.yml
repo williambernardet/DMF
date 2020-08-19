@@ -1,0 +1,25 @@
+
+jobs:
+- job: build
+  displayName: 'Build'
+  pool:
+    vmImage: windows-2019
+  strategy:
+    maxParallel: 3
+    matrix:
+      19H1_release_x64:
+        TargetOS: 19H1
+        Platform: x64
+        Configuration: Release
+      19H1_debug_x64:
+          TargetOS: 19H1
+          Platform: x64
+          Configuration: Debug
+  
+  steps:
+  - powershell: build.ps1
+  - task: PublishPipelineArtifact@1
+    inputs:
+      artifactName: 'Bin_$(TargetOS)_$(Configuration)_$(Platform)'
+      targetPath: '$(Build.SourcesDirectory)/$(Configuration)/$(Platform)'
+      
