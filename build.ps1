@@ -6,12 +6,18 @@ param(
     [string] $Configuration,
     [Parameter(Mandatory)]
     [string] $Platform,
-    [string] $Solution = 'DMF.sln'
+    [string] $Solution = 'DMF.sln',
+    [ValidateSet('Build', 'Pack')]
+    [string] $Action = 'Build'
 )
+$ErrorActionPreference = 'Stop'
+$ProgressPreference = 'SilentlyContinue'
 
 $script:TARGETOS_URL = @{
     '19H1' = 'https://devicesoss.z5.web.core.windows.net/ewdk/EWDK_vb_release_19041_191206-1406.iso'
 }
+
+$script:CACHE_DIR = Join-Path $PSScriptRoot -ChildPath '.cache'
 
 <#
     Execute a command, and update environment modification into
@@ -50,13 +56,50 @@ function Set-EnvironmentFromScript {
     }
 }
 
-function DownloadEwdk {
+function Get-Nuget {
+    [CmdletBinding()]
+    param()
+    $url = 'https://dist.nuget.org/win-x86-commandline/latest/nuget.exe'
+    $nugetExe = Join-Path $script:CACHE_DIR -ChildPath 'gitversion.exe'
+    if (-not (Test-Path $nugetExe -PathType Leaf)) {
+        Write-Host "> Downloading latest nuget.exe"
+        $null = New-Item $script:CACHE_DIR -Force -ItemType Directory
+        Invoke-WebRequest -Uri $url -UseBasicParsing -OutFile $nugetExe
+    }
+    $nugetExe
+}
+
+function Request-GitVersion {
+    [CmdletBinding()]
+    param()
+    # Download GitVersion if needed
+    $gitVersionExe = Join-Path $script:CACHE_DIR -ChildPath 'GitVersion.CommandLine/tools/gitversion.exe'
+    if (-not (Test-Path $gitVersionExe -PathType Leaf)) {
+        Write-Host "> Downloading latest gitversion.exe"
+        $null = New-Item $script:CACHE_DIR -Force -ItemType Directory
+        $nugetExe = Get-Nuget
+        &$nugetExe install GitVersion.CommandLine -ExcludeVersion -OutputDirectory $script:CACHE_DIR
+    }
+    Write-Verbose "Executing: ${gitVersionExe} $($arguments -join ' ')"
+    $result = &$gitVersionExe @arguments *>&1
+    "GitVersion output: ${result}" | Write-Debug
+    if ($LASTEXITCODE -ne 0) {
+        $result | Write-Host
+        throw "Unable to request the version! (ExitCode=${LASTEXITCODE})"
+    }
+    $result | ConvertFrom-Json
+}
+
+<#
+    Download EWDK Iso from azure endpoint
+#>
+function Save-Ewdk {
     [CmdletBinding()]
     param(
         [string] $TargetOS
     )
     $backupProgressPreference = $ProgressPreference
-    $isoFile = Join-Path (Get-Location).Path -ChildPath "${TargetOS}.iso"
+    $isoFile = Join-Path $script:CACHE_DIR -ChildPath "${TargetOS}.iso"
     if (-not (Test-Path $isoFile -PathType Leaf)) {
         try {
             $ProgressPreference = 'SilentlyContinue'
@@ -80,35 +123,50 @@ function DownloadEwdk {
 }
 
 
-$isoFile = DownloadEwdk -TargetOS $TargetOS
+function Invoke-Build {
+    [CmdletBinding()]
+    param()
+    $version = Request-GitVersion
+    $version | Out-String | Write-Host
+    Write-Host "##vso[task.updatebuildnumber]$($version.NuGetVersion)"
+    $isoFile = Save-Ewdk -TargetOS $TargetOS
 
-$mountedISO = $null
-try {
-    Write-Host "Mounting ISO: ${isoFile}"
-    $mountedISO = Mount-DiskImage -PassThru -ImagePath $isoFile
-    Start-Sleep -Seconds 5 # TODO: Need to fix
-    $diskVolume = ($mountedISO | Get-Volume).DriveLetter
+    $mountedISO = $null
+    try {
+        Write-Host "Mounting ISO: ${isoFile}"
+        $mountedISO = Mount-DiskImage -PassThru -ImagePath $isoFile
+        Start-Sleep -Seconds 5 # TODO: Need to fix
+        $diskVolume = ($mountedISO | Get-Volume).DriveLetter
 
-    # Enable EWDK
-    Write-Host "Enabling EWK from ${diskVolume}"
-    Set-EnvironmentFromScript -Command "${diskVolume}:\BuildEnv\SetupBuildEnv.cmd"
+        # Enable EWDK
+        Write-Host "Enabling EWK from ${diskVolume}"
+        Set-EnvironmentFromScript -Command "${diskVolume}:\BuildEnv\SetupBuildEnv.cmd"
 
-    # Build the solution
-    $splat = @(
-        $Solution,
-        "/p:Configuration=${Configuration}"
-        "/p:Platform=${Platform}"
-    )
-    msbuild @splat
-    $exitCode = $LASTEXITCODE
-    $global:LASTEXITCODE = 0
-    if ($exitCode -ne 0) {
-        throw "Build failed (exitCode=${exitCode})"
-    }
-} finally {
-    Pop-Location
-    if ($null -ne $mountedISO) {
-        Write-Host "Unmounting $($mountedISO.ImagePath)"
-        Dismount-DiskImage -ImagePath $mountedISO.ImagePath
+        # Build the solution
+        $splat = @(
+            $Solution,
+            "/p:Configuration=${Configuration}"
+            "/p:Platform=${Platform}"
+        )
+        msbuild @splat
+        $exitCode = $LASTEXITCODE
+        $global:LASTEXITCODE = 0
+        if ($exitCode -ne 0) {
+            throw "Build failed (exitCode=${exitCode})"
+        }
+    } finally {
+        Pop-Location
+        if ($null -ne $mountedISO) {
+            Write-Host "Unmounting $($mountedISO.ImagePath)"
+            Dismount-DiskImage -ImagePath $mountedISO.ImagePath
+        }
     }
 }
+
+
+function Invoke-Pack {
+    [CmdletBinding()]
+    param()
+}
+
+&"Invoke-${Action}"

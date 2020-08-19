@@ -1,3 +1,18 @@
+parameters:
+  - name: TargetOS
+    type: object
+    default:
+      - 19H1
+  - name: Platform
+    type: object
+    default:
+      - x64
+      - arm64
+  - name: Configuration
+    type: object
+    default:
+      - x64
+      - arm64
 
 jobs:
 - job: build
@@ -9,14 +24,13 @@ jobs:
   strategy:
     maxParallel: 3
     matrix:
-      19H1_release_x64:
-        TargetOS: 19H1
-        Platform: x64
-        Configuration: Release
-      19H1_debug_x64:
-          TargetOS: 19H1
-          Platform: x64
-          Configuration: Debug
+      ${{ each t in parameters.TargetOS }}:
+        ${{ each p in parameters.Platform }}:
+          ${{ each c in parameters.Configuration }}:
+            ${{t}}_${{c}}_${{p}}:
+              TargetOS: ${{t}}
+              Platform: ${{p}}
+              Configuration: ${{c}}
   
   steps:
   - powershell: .\build.ps1 -TargetOS $Env:TARGETOS -Configuration $Env:Configuration -Platform $Env:Platform
