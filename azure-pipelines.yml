@@ -34,7 +34,10 @@ jobs:
   
   steps:
   - powershell: .\build.ps1 -TargetOS $Env:TARGETOS -Configuration $Env:Configuration -Platform $Env:Platform
+    env:
+      SYSTEM_ACCESSTOKEN: $(System.AccessToken)
     displayName: 'Build $(TargetOS)-$(Configuration)-$(Platform)'
+
   - task: PublishPipelineArtifact@1
     inputs:
       artifactName: 'Bin_$(TargetOS)_$(Configuration)_$(Platform)'
