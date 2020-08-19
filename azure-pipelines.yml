@@ -17,7 +17,7 @@ jobs:
           Configuration: Debug
   
   steps:
-  - powershell: build.ps1
+  - powershell: .\build.ps1
   - task: PublishPipelineArtifact@1
     inputs:
       artifactName: 'Bin_$(TargetOS)_$(Configuration)_$(Platform)'
