@@ -143,7 +143,7 @@ function Invoke-Build {
     param()
     $version = Request-GitVersion /nofetch
     $version | Out-String | Write-Host
-    Write-Host "##vso[task.updatebuildnumber]$($version.NuGetVersion)"
+    Write-Host "##vso[build.updatebuildnumber]$($version.NuGetVersion)"
     $isoFile = Save-Ewdk -TargetOS $TargetOS
 
     $mountedISO = $null
