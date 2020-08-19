@@ -11,8 +11,8 @@ parameters:
   - name: Configuration
     type: object
     default:
-      - x64
-      - arm64
+      - Release
+      - Debug
 
 jobs:
 - job: build
