@@ -1,8 +1,11 @@
 [CmdletBinding()]
 param(
-    [string] $TargetOS = $TARGETOS,
-    [string] $Configuration = $CONFIGURATION,
-    [string] $Platform = $PLATFORM,
+    [Parameter(Mandatory)]
+    [string] $TargetOS,
+    [Parameter(Mandatory)]
+    [string] $Configuration,
+    [Parameter(Mandatory)]
+    [string] $Platform,
     [string] $Solution = 'DMF.sln'
 )
 
