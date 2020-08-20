@@ -51,10 +51,10 @@ jobs:
   - task: PublishPipelineArtifact@1
     inputs:
       artifactName: 'Bin_$(TargetOS)_$(Platform)_$(Configuration)'
-      targetPath: '$(Build.SourcesDirectory)/$(Configuration)/$(Platform)'
+      targetPath: '$(Build.BinariesDirectory)/Bin_$(TargetOS)_$(Platform)_$(Configuration)'
       
 - job: pack
-  displayName: 'Build'
+  displayName: 'Pack'
   dependsOn:
     - build
   pool:

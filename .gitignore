@@ -331,4 +331,5 @@ ASALocalRun/
 
 # Ignore temp files like ewdk, gitversion...
 .cache/
+.output/
 

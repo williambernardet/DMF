@@ -16,6 +16,9 @@ $ErrorActionPreference = 'Stop'
 $ProgressPreference = 'SilentlyContinue'
 [Net.ServicePointManager]::SecurityProtocol = "tls12, tls11, tls"
 
+$script:BinariesDirectory = if ([string]::IsNullOrEmpty($Env:BUILD_BINARIESDIRECTORY)) { "${PSScriptRoot}\.output\b" } else { $Env:BUILD_BINARIESDIRECTORY }
+$script:ArtifactsDirectory = if ([string]::IsNullOrEmpty($Env:BUILD_ARTIFACTSTAGINGDIRECTORY)) { "${PSScriptRoot}\.output\a" } else { $Env:BUILD_ARTIFACTSTAGINGDIRECTORY }
+
 $script:TARGETOS_URL = @{
     '20H1' = 'https://devicesoss.z5.web.core.windows.net/ewdk/EWDK_vb_release_19041_191206-1406.iso'
     '19H1' = 'https://devicesoss.z5.web.core.windows.net/ewdk/EWDK_19h1_release_svc_prod3_18362_190416-1111.iso'
@@ -180,12 +183,85 @@ function Invoke-Build {
             Dismount-DiskImage -ImagePath $mountedISO.ImagePath
         }
     }
+
+    # Stage artifacts
+    $dropPath = "${script:BinariesDirectory}\Bin_${TargetOS}_${Platform}_${Configuration}"
+    Write-Host "Staging artifacts under ${dropPath}"
+    $null = New-Item $dropPath -Force -ItemType Directory
+    Copy-Item "${PSScriptRoot}\${Configuration}\${Platform}\*" -Destination $dropPath -Force -Recurse
 }
 
 
 function Invoke-Pack {
     [CmdletBinding()]
     param()
+    # Calculate the version of the package
+    $version = Request-GitVersion /nofetch
+    $packageVersion = $version.NuGetVersion
+
+    # Package each target OS separately
+    foreach ($tos in $TargetOS.Split(',').Trim()) {
+        $packageName = 'Devices.Library.DMF.{0}' -f $tos
+        $packageDir = Join-Path $script:BinariesDirectory -ChildPath $packageName
+        $packageIncDir = Join-Path $packageDir -ChildPath 'include'
+        $nuspecPath = Join-Path $packageDir -ChildPath "${packageName}.nuspec"
+        $null = New-Item $packageDir -ItemType Directory -Force
+
+        # Stage includes
+        Write-Host "Staging package ${packageName}@${packageVersion} content"
+        $null = New-Item "${packageIncDir}\DMF" -ItemType Directory -Force
+        Get-ChildItem "${PSScriptRoot}\DMF\*" -Recurse -File |
+            Where-Object { $_.Name -like '*.h' } |
+            ForEach-Object {
+            $dest = "${packageIncDir}\DMF\{0}" -f $_.FullName.Substring("${PSScriptRoot}\DMF\".Length)
+            $null = New-Item (Split-Path $dest -Parent) -ItemType Directory -Force
+            Copy-Item $_.FullName -Destination $dest -Force
+        }
+
+        # Stage bin content
+        foreach ($c in $Configuration.Split(',').Trim()) {
+            foreach ($p in $Platform.Split(',').Trim()) {
+                $packageLibDir = Join-Path $packageDir -ChildPath "Drop_${tos}_${p}_${c}/lib"
+                $null = New-Item $packageLibDir -ItemType Directory -Force
+                Copy-Item "${script:BinariesDirectory}\Bin_${tos}_${p}_${c}\lib\*" -Destination $packageLibDir -Force -Recurse
+            }
+        }
+
+        # Create a nuspec file
+        $nuspecContent = @"
+<?xml version=`"1.0`"?>
+<package xmlns="http://schemas.microsoft.com/packaging/2011/08/nuspec.xsd">
+    <metadata>
+        <id>{0}</id>
+        <version>{1}</version>
+        <title>DMF library</title>
+        <authors>Microsoft</authors>
+        <licenseUrl>https://github.com/microsoft/DMF/blob/master/LICENSE</licenseUrl>
+        <projectUrl>https://github.com/microsoft/DMF</projectUrl>
+        <description>DMF library</description>
+        <summary></summary>
+        <copyright></copyright>
+    </metadata>
+</package>
+"@
+        $nuspecContent -f $packageName, $packageVersion | Out-File -FilePath $nuspecPath -Encoding utf8 -Force
+        
+        # Use nuget to package the content
+        $null = New-Item $script:ArtifactsDirectory -ItemType Directory -Force
+        $nugetExe = Get-Nuget
+        $splat = @(
+            'pack', $nuspecPath,
+            '-OutputDirectory', $script:ArtifactsDirectory,
+            '-NoPackageAnalysis',
+            '-NonInteractive'
+        )
+        &$nugetExe @splat
+        $exitCode = $LASTEXITCODE
+        $global:LASTEXITCODE = 0
+        if ($exitCode -ne 0) {
+            throw "Failed to create the package"
+        }
+    }
 }
 
 
