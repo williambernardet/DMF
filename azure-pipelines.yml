@@ -2,7 +2,11 @@ parameters:
   - name: TargetOS
     type: object
     default:
+      - 20H1
       - 19H1
+      - RS5
+      - RS4
+      - RS3
   - name: Platform
     type: object
     default:

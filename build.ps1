@@ -17,7 +17,11 @@ $ProgressPreference = 'SilentlyContinue'
 [Net.ServicePointManager]::SecurityProtocol = "tls12, tls11, tls"
 
 $script:TARGETOS_URL = @{
-    '19H1' = 'https://devicesoss.z5.web.core.windows.net/ewdk/EWDK_vb_release_19041_191206-1406.iso'
+    '20H1' = 'https://devicesoss.blob.core.windows.net/$web/ewdk/EWDK_vb_release_19041_191206-1406.iso'
+    '19H1' = 'https://devicesoss.blob.core.windows.net/$web/ewdk/EWDK_rs5_release_svc_prod2_17763_190129-1747.iso'
+    'RS5' = 'https://devicesoss.z5.web.core.windows.net/ewdk/EWDK_vb_release_19041_191206-1406.iso'
+    'RS4' = 'https://devicesoss.blob.core.windows.net/$web/ewdk/EWDK_rs4_release_svc_prod1_17134_180727-1807.iso'
+    'RS3' = 'https://devicesoss.blob.core.windows.net/$web/ewdk/EWDK_rs3_release_svc_16299_180320-1852.iso'
 }
 $script:CACHE_DIR = Join-Path $PSScriptRoot -ChildPath '.cache'
 
