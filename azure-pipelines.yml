@@ -70,7 +70,7 @@ stages:
         path: '$(Build.BinariesDirectory)' 
     - powershell: |
         $splat = @{
-          Action = Pack
+          Action = 'Pack'
           TargetOS = '${{ join(',', parameters.TargetOS) }}'
           Platform = '${{ join(',', parameters.Platform) }}'
           Configuration = '${{ join(',', parameters.Configuration) }}'
