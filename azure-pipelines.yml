@@ -32,7 +32,7 @@ jobs:
   workspace:
     clean: all
   strategy:
-    maxParallel: 3
+    maxParallel: 12
     matrix:
       ${{ each t in parameters.TargetOS }}:
         ${{ each c in parameters.Configuration }}:
