@@ -80,4 +80,4 @@ stages:
     - task: PublishPipelineArtifact@1
       inputs:
         artifactName: 'NuGet'
-        targetPath: '$(Build.ArtifactStagingDirectory)/**/*.nupkg'
+        targetPath: '$(Build.ArtifactStagingDirectory)'
