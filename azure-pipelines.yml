@@ -70,3 +70,8 @@ stages:
         path: '$(Build.BinariesDirectory)' 
     - powershell: |
         .\Build.ps1 -Action Pack -TargetOS '${{ join(parameters.TargetOS, ',')}}' -Platform '${{ join(parameters.Platform, ',')}}' -Configuration '${{ join(parameters.Configuration, ',')}}'
+
+    - task: PublishPipelineArtifact@1
+      inputs:
+        artifactName: 'NuGet'
+        targetPath: '$(Build.ArtifactStagingDirectory)/**/*.nupkg'
