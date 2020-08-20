@@ -18,6 +18,12 @@ parameters:
       - Release
       - Debug
 
+trigger:
+  batch: true
+  branches:
+    include:
+      - master
+
 jobs:
 - job: build
   displayName: 'Build'
