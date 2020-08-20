@@ -140,6 +140,43 @@ function Save-Ewdk {
     }
 }
 
+function New-SourceIndexMetadata {
+    [CmdletBinding()]
+    param (
+        [Parameter(Mandatory)]
+        [string] $ManifestFile,
+        [string] $CollectionUrl = $Env:SYSTEM_TEAMFOUNDATIONCOLLECTIONURI,
+        [string] $TeamProjectId = ${Env:SYSTEM_TEAMPROJECTID},
+        [string] $RepositoryId = ${Env:BUILD_REPOSITORY_ID},
+        [string] $CommitId = ${Env:BUILD_SOURCEVERSION},
+        [string] $Directory = ${Env:BUILD_SOURCESDIRECTORY}
+            
+    )
+
+    # Check parameters
+    if (-not [string]::IsNullOrEmpty($CollectionUrl)) {
+        $CollectionUrl = $CollectionUrl.TrimEnd('/')
+    }
+    if ([string]::IsNullOrEmpty($Directory)) {
+        $Directory = $PSScriptRoot
+    }
+    $Directory = (Get-Item $Directory).FullName.Trim('\')
+
+    # Generate metadata
+    $data = [PSCustomObject]@{
+        collectionUrl = $CollectionUrl 
+        teamProjectId = $TeamProjectId
+        repositoryId = $RepositoryId
+        commitId = $CommitId
+        directory = $Directory
+        files = @()
+    }
+    Get-ChildItem "${Directory}\*" -Recurse | Foreach-Object {
+        $data.files += $_.FullName.Substring($data.directory.length + 1)
+    }
+    
+    $data | ConvertTo-Json -Depth 100 | Out-File -FilePath $ManifestFile -Force
+}
 
 #################################################################
 # Actions
@@ -189,6 +226,10 @@ function Invoke-Build {
     Write-Host "Staging artifacts under ${dropPath}"
     $null = New-Item $dropPath -Force -ItemType Directory
     Copy-Item "${PSScriptRoot}\${Configuration}\${Platform}\*" -Destination $dropPath -Force -Recurse
+
+    # Source indexing support
+    Write-Host "Generating source indexing metadata."
+    New-SourceIndexMetadata -ManifestFile "${dropPath}\sourceindexer-metadata.json"
 }
 
 
