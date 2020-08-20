@@ -69,7 +69,13 @@ stages:
         patterns: 'Bin_*/**'
         path: '$(Build.BinariesDirectory)' 
     - powershell: |
-        .\Build.ps1 -Action Pack -TargetOS '${{ join(parameters.TargetOS, ',')}}' -Platform '${{ join(parameters.Platform, ',')}}' -Configuration '${{ join(parameters.Configuration, ',')}}'
+        $splat = ${
+          Action = Pack
+          TargetOS = '${{ join(',', parameters.TargetOS) }}'
+          Platform = '${{ join(',', parameters.Platform) }}'
+          Configuration = '${{ join(',', parameters.Configuration) }}'
+        }
+        .\Build.ps1 @splat
 
     - task: PublishPipelineArtifact@1
       inputs:
