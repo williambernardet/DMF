@@ -50,6 +50,21 @@ jobs:
 
   - task: PublishPipelineArtifact@1
     inputs:
-      artifactName: 'Bin_$(TargetOS)_$(Configuration)_$(Platform)'
+      artifactName: 'Bin_$(TargetOS)_$(Platform)_$(Configuration)'
       targetPath: '$(Build.SourcesDirectory)/$(Configuration)/$(Platform)'
       
+- job: pack
+  displayName: 'Build'
+  dependsOn:
+    - build
+  pool:
+    name: 'Azure - SW Build EWDK Agents'
+  workspace:
+    clean: all
+  steps:
+  - task: DownloadPipelineArtifact@2
+    inputs:
+      patterns: 'Bin_*/**'
+      path: '$(Build.BinariesDirectory)' 
+  - powershell: |
+      .\Build.ps1 -Action Pack -TargetOS '${{ join(parameters.TargetOS, ',')}}' -Platform '${{ join(parameters.Platform, ',')}}' -Configuration '${{ join(parameters.Configuration, ',')}}'
