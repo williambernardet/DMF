@@ -149,6 +149,7 @@ function New-SourceIndexMetadata {
         [string] $TeamProjectId = ${Env:SYSTEM_TEAMPROJECTID},
         [string] $RepositoryId = ${Env:BUILD_REPOSITORY_ID},
         [string] $CommitId = ${Env:BUILD_SOURCEVERSION},
+        [string] $RepositoryProvider = ${Env:BUILD_REPOSITORY_PROVIDER},
         [string] $Directory = ${Env:BUILD_SOURCESDIRECTORY}
             
     )
@@ -164,7 +165,8 @@ function New-SourceIndexMetadata {
 
     # Generate metadata
     $data = [PSCustomObject]@{
-        collectionUrl = $CollectionUrl 
+        collectionUrl = $CollectionUrl
+        repositoryProvider = $RepositoryProvider
         teamProjectId = $TeamProjectId
         repositoryId = $RepositoryId
         commitId = $CommitId
@@ -185,9 +187,14 @@ function New-SourceIndexMetadata {
 function Invoke-Build {
     [CmdletBinding()]
     param()
+
+    # Resolve the version
     $version = Request-GitVersion /nofetch
     $version | Out-String | Write-Host
     Write-Host "##vso[build.updatebuildnumber]$($version.NuGetVersion)"
+
+
+    # Download EWDK iso
     $isoFile = Save-Ewdk -TargetOS $TargetOS
 
     $mountedISO = $null
