@@ -45,7 +45,16 @@ stages:
                 Configuration: ${{c}}
     
     steps:
-    - powershell: .\build.ps1 -TargetOS $Env:TARGETOS -Configuration $Env:Configuration -Platform $Env:Platform
+    - powershell: |
+        Get-Item Env: | Out-String | Write-Host
+
+    - powershell: |
+        $splat = @{
+          TargetOS = $Env:TARGETOS
+          Configuration = $Env:Configuration
+          Platform = $Env:Platform
+        }
+        .\build.ps1 @splat
       env:
         SYSTEM_ACCESSTOKEN: $(System.AccessToken)
       displayName: 'Build $(TargetOS)-$(Configuration)-$(Platform)'
