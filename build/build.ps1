@@ -246,7 +246,7 @@ function Invoke-Pack {
     [CmdletBinding()]
     param()
     # Calculate the version of the package
-    $version = Request-GitVersion /nofetch  /config "${PSScriptRoot}\GitVersion.yml"
+    $version = Request-GitVersion /nofetch /config "${PSScriptRoot}\GitVersion.yml"
     $packageVersion = $version.NuGetVersion
 
     # Package each target OS separately
