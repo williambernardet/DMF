@@ -16,8 +16,9 @@ $ErrorActionPreference = 'Stop'
 $ProgressPreference = 'SilentlyContinue'
 [Net.ServicePointManager]::SecurityProtocol = "tls12, tls11, tls"
 
-$script:BinariesDirectory = if ([string]::IsNullOrEmpty($Env:BUILD_BINARIESDIRECTORY)) { "${PSScriptRoot}\.output\b" } else { $Env:BUILD_BINARIESDIRECTORY }
-$script:ArtifactsDirectory = if ([string]::IsNullOrEmpty($Env:BUILD_ARTIFACTSTAGINGDIRECTORY)) { "${PSScriptRoot}\.output\a" } else { $Env:BUILD_ARTIFACTSTAGINGDIRECTORY }
+$script:SourcesDirectory = (Get-Item "${PSScriptRoot}\..").FullName
+$script:BinariesDirectory = if ([string]::IsNullOrEmpty($Env:BUILD_BINARIESDIRECTORY)) { "${SourcesDirectory}\.output\b" } else { $Env:BUILD_BINARIESDIRECTORY }
+$script:ArtifactsDirectory = if ([string]::IsNullOrEmpty($Env:BUILD_ARTIFACTSTAGINGDIRECTORY)) { "${SourcesDirectory}\.output\a" } else { $Env:BUILD_ARTIFACTSTAGINGDIRECTORY }
 
 $script:TARGETOS_URL = @{
     '20H1' = 'https://devicesoss.z5.web.core.windows.net/ewdk/EWDK_vb_release_19041_191206-1406.iso'
@@ -26,7 +27,7 @@ $script:TARGETOS_URL = @{
     'RS4' = 'https://devicesoss.z5.web.core.windows.net/ewdk/EWDK_rs4_release_svc_prod1_17134_180727-1807.iso'
     'RS3' = 'https://devicesoss.z5.web.core.windows.net/ewdk/EWDK_rs3_release_svc_16299_180320-1852.iso'
 }
-$script:CACHE_DIR = Join-Path $PSScriptRoot -ChildPath '.cache'
+$script:CACHE_DIR = Join-Path $SourcesDirectory -ChildPath '.cache'
 
 
 #################################################################
@@ -159,7 +160,7 @@ function New-SourceIndexMetadata {
         $CollectionUrl = $CollectionUrl.TrimEnd('/')
     }
     if ([string]::IsNullOrEmpty($Directory)) {
-        $Directory = $PSScriptRoot
+        $Directory = $script:SourcesDirectory
     }
     $Directory = (Get-Item $Directory).FullName.Trim('\')
 
@@ -199,6 +200,7 @@ function Invoke-Build {
 
     $mountedISO = $null
     try {
+        Push-Location $SourcesDirectory
         Write-Host "Mounting ISO: ${isoFile}"
         $mountedISO = Mount-DiskImage -PassThru -ImagePath $isoFile
         Start-Sleep -Seconds 5 # TODO: Need to fix
@@ -232,7 +234,7 @@ function Invoke-Build {
     $dropPath = "${script:BinariesDirectory}\Bin_${TargetOS}_${Platform}_${Configuration}"
     Write-Host "Staging artifacts under ${dropPath}"
     $null = New-Item $dropPath -Force -ItemType Directory
-    Copy-Item "${PSScriptRoot}\${Configuration}\${Platform}\*" -Destination $dropPath -Force -Recurse
+    Copy-Item "${SourcesDirectory}\${Configuration}\${Platform}\*" -Destination $dropPath -Force -Recurse
 
     # Source indexing support
     Write-Host "Generating source indexing metadata."
@@ -258,10 +260,10 @@ function Invoke-Pack {
         # Stage includes
         Write-Host "Staging package ${packageName}@${packageVersion} content"
         $null = New-Item "${packageIncDir}\DMF" -ItemType Directory -Force
-        Get-ChildItem "${PSScriptRoot}\DMF\*" -Recurse -File |
+        Get-ChildItem "${SourcesDirectory}\DMF\*" -Recurse -File |
             Where-Object { $_.Name -like '*.h' } |
             ForEach-Object {
-            $dest = "${packageIncDir}\DMF\{0}" -f $_.FullName.Substring("${PSScriptRoot}\DMF\".Length)
+            $dest = "${packageIncDir}\DMF\{0}" -f $_.FullName.Substring("${SourcesDirectory}\DMF\".Length)
             $null = New-Item (Split-Path $dest -Parent) -ItemType Directory -Force
             Copy-Item $_.FullName -Destination $dest -Force
         }

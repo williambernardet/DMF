@@ -54,7 +54,7 @@ stages:
           Configuration = $Env:Configuration
           Platform = $Env:Platform
         }
-        .\build.ps1 @splat
+        .\build\build.ps1 @splat
       env:
         SYSTEM_ACCESSTOKEN: $(System.AccessToken)
       displayName: 'Build $(TargetOS)-$(Configuration)-$(Platform)'
@@ -84,7 +84,7 @@ stages:
           Platform = '${{ join(',', parameters.Platform) }}'
           Configuration = '${{ join(',', parameters.Configuration) }}'
         }
-        .\Build.ps1 @splat
+        .\build\Build.ps1 @splat
 
     - task: PublishPipelineArtifact@1
       inputs:
