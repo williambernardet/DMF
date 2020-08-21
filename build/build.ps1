@@ -190,7 +190,7 @@ function Invoke-Build {
     param()
 
     # Resolve the version
-    $version = Request-GitVersion /nofetch
+    $version = Request-GitVersion /nofetch /config "${PSScriptRoot}\GitVersion.yml"
     $version | Out-String | Write-Host
     Write-Host "##vso[build.updatebuildnumber]$($version.NuGetVersion)"
 
@@ -246,7 +246,7 @@ function Invoke-Pack {
     [CmdletBinding()]
     param()
     # Calculate the version of the package
-    $version = Request-GitVersion /nofetch
+    $version = Request-GitVersion /nofetch  /config "${PSScriptRoot}\GitVersion.yml"
     $packageVersion = $version.NuGetVersion
 
     # Package each target OS separately
