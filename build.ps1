@@ -262,9 +262,10 @@ function Invoke-Pack {
         # Stage bin content
         foreach ($c in $Configuration.Split(',').Trim()) {
             foreach ($p in $Platform.Split(',').Trim()) {
-                $packageLibDir = Join-Path $packageDir -ChildPath "Drop_${tos}_${p}_${c}/lib"
-                $null = New-Item $packageLibDir -ItemType Directory -Force
-                Copy-Item "${script:BinariesDirectory}\Bin_${tos}_${p}_${c}\lib\*" -Destination $packageLibDir -Force -Recurse
+                $packageDropDir = Join-Path $packageDir -ChildPath "Drop_${tos}_${p}_${c}"
+                $null = New-Item "${packageDropDir}\lib" -ItemType Directory -Force
+                Copy-Item "${script:BinariesDirectory}\Bin_${tos}_${p}_${c}\lib\*" -Destination "${packageDropDir}\lib" -Force -Recurse
+                Copy-Item "${script:BinariesDirectory}\Bin_${tos}_${p}_${c}\sourceindexer-metadata.json" -Destination "${packageDropDir}/sourceindexer-metadata.json" -Force 
             }
         }
 
