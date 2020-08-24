@@ -23,70 +23,81 @@ trigger:
   branches:
     include:
       - master
+      - release/*
 
 stages:
-- stage: build
-  jobs:
-  - job: build
-    displayName: 'Build'
-    pool:
-      name: 'Azure - SW Build EWDK Agents'
-    workspace:
-      clean: all
-    strategy:
-      maxParallel: 12
-      matrix:
-        ${{ each t in parameters.TargetOS }}:
-          ${{ each c in parameters.Configuration }}:
-            ${{ each p in parameters.Platform }}:
-              ${{t}}_${{c}}_${{p}}:
-                TargetOS: ${{t}}
-                Platform: ${{p}}
-                Configuration: ${{c}}
-    
-    steps:
-    - powershell: |
-        Get-Item Env: | Out-String | Write-Host
-
-    - powershell: |
-        $splat = @{
-          TargetOS = $Env:TARGETOS
-          Configuration = $Env:Configuration
-          Platform = $Env:Platform
-        }
-        .\build\build.ps1 @splat
-      env:
-        SYSTEM_ACCESSTOKEN: $(System.AccessToken)
-      displayName: 'Build $(TargetOS)-$(Configuration)-$(Platform)'
-
-    - task: PublishPipelineArtifact@1
-      inputs:
-        artifactName: 'Bin_$(TargetOS)_$(Platform)_$(Configuration)'
-        targetPath: '$(Build.BinariesDirectory)/Bin_$(TargetOS)_$(Platform)_$(Configuration)'
+  - stage: build
+    jobs:
+      - job: build
+        displayName: 'Build'
+        pool:
+          name: 'Azure - SW Build EWDK Agents'
+        workspace:
+          clean: all
+        strategy:
+          maxParallel: 12
+          matrix:
+            ${{ each t in parameters.TargetOS }}:
+              ${{ each c in parameters.Configuration }}:
+                ${{ each p in parameters.Platform }}:
+                  ${{t}}_${{c}}_${{p}}:
+                    TargetOS: ${{t}}
+                    Platform: ${{p}}
+                    Configuration: ${{c}}
         
-  - job: pack
-    displayName: 'Pack'
-    dependsOn:
-      - build
-    pool:
-      name: 'Azure - SW Build EWDK Agents'
-    workspace:
-      clean: all
-    steps:
-    - task: DownloadPipelineArtifact@2
-      inputs:
-        patterns: 'Bin_*/**'
-        path: '$(Build.BinariesDirectory)' 
-    - powershell: |
-        $splat = @{
-          Action = 'Pack'
-          TargetOS = '${{ join(',', parameters.TargetOS) }}'
-          Platform = '${{ join(',', parameters.Platform) }}'
-          Configuration = '${{ join(',', parameters.Configuration) }}'
-        }
-        .\build\Build.ps1 @splat
+        steps:
+          - checkout: self
+            persistCredentials: true
 
-    - task: PublishPipelineArtifact@1
-      inputs:
-        artifactName: 'NuGet'
-        targetPath: '$(Build.ArtifactStagingDirectory)'
+          - powershell: |
+              Get-Item Env: | Out-String | Write-Host
+
+          - powershell: |
+              $splat = @{
+                TargetOS = $Env:TARGETOS
+                Configuration = $Env:Configuration
+                Platform = $Env:Platform
+              }
+              .\build\build.ps1 @splat
+            env:
+              SYSTEM_ACCESSTOKEN: $(System.AccessToken)
+            displayName: 'Build $(TargetOS)-$(Configuration)-$(Platform)'
+
+          - task: PublishPipelineArtifact@1
+            inputs:
+              artifactName: 'Bin_$(TargetOS)_$(Platform)_$(Configuration)'
+              targetPath: '$(Build.BinariesDirectory)/Bin_$(TargetOS)_$(Platform)_$(Configuration)'
+              
+      - job: pack
+        displayName: 'Pack'
+        dependsOn:
+          - build
+        pool:
+          name: 'Azure - SW Build EWDK Agents'
+        workspace:
+          clean: all
+        steps:
+          - task: DownloadPipelineArtifact@2
+            inputs:
+              patterns: 'Bin_*/**'
+              path: '$(Build.BinariesDirectory)' 
+          
+          - powershell: |
+              $splat = @{
+                Action = 'Pack'
+                TargetOS = '${{ join(',', parameters.TargetOS) }}'
+                Platform = '${{ join(',', parameters.Platform) }}'
+                Configuration = '${{ join(',', parameters.Configuration) }}'
+              }
+              .\build\Build.ps1 @splat
+
+          - task: PublishPipelineArtifact@1
+            inputs:
+              artifactName: 'NuGet'
+              targetPath: '$(Build.ArtifactStagingDirectory)'
+          
+          - powershell: |
+              git tag $Env:BUILD_BUILDNUMBER
+              git push origin $Env:BUILD_BUILDNUMBER
+            displayName: Tag Git commit
+            condition: and(not(in(variables['Build.Reason'], 'PullRequest')), or(eq(variables['Build.SourceBranch'], 'refs/heads/master'), startsWith(variables['Build.SourceBranch'], 'refs/heads/feature/'), startsWith(variables['Build.SourceBranch'], 'refs/heads/release/')))
