@@ -7,7 +7,7 @@ param(
     [Parameter(Mandatory)]
     [string] $Platform,
     [string] $Solution = 'DMF.sln',
-    [ValidateSet('Build', 'Pack')]
+    [ValidateSet('Build', 'Pack', 'Release')]
     [string] $Action = 'Build'
 )
 
@@ -315,6 +315,17 @@ function Invoke-Pack {
     }
 }
 
+function Invoke-Release {
+    [CmdletBinding()]
+    param()
+    # Calculate the version of the package
+    $version = Request-GitVersion /nofetch /config "${PSScriptRoot}\GitVersion.yml"
+    $packageVersion = $version.NuGetVersion
+    
+    Write-Host "Creating tag v${packageVersion}"
+    git tag "v${packageVersion}"
+    git push origin "v${packageVersion}"
+}
 
 # Calling main action
 &"Invoke-${Action}"

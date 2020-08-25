@@ -97,7 +97,12 @@ stages:
               targetPath: '$(Build.ArtifactStagingDirectory)'
           
           - powershell: |
-              git tag $Env:BUILD_BUILDNUMBER
-              git push origin $Env:BUILD_BUILDNUMBER
+              $splat = @{
+                Action = 'Release'
+                TargetOS = '${{ join(',', parameters.TargetOS) }}'
+                Platform = '${{ join(',', parameters.Platform) }}'
+                Configuration = '${{ join(',', parameters.Configuration) }}'
+              }
+              .\build\Build.ps1 @splat
             displayName: Tag Git commit
             condition: and(not(in(variables['Build.Reason'], 'PullRequest')), or(eq(variables['Build.SourceBranch'], 'refs/heads/master'), startsWith(variables['Build.SourceBranch'], 'refs/heads/feature/'), startsWith(variables['Build.SourceBranch'], 'refs/heads/release/')))
