@@ -46,9 +46,6 @@ stages:
                     Configuration: ${{c}}
         
         steps:
-          - checkout: self
-            persistCredentials: true
-
           - powershell: |
               Get-Item Env: | Out-String | Write-Host
 
@@ -77,6 +74,9 @@ stages:
         workspace:
           clean: all
         steps:
+          - checkout: self
+            persistCredentials: true
+
           - task: DownloadPipelineArtifact@2
             inputs:
               patterns: 'Bin_*/**'
